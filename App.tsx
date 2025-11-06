@@ -23,6 +23,24 @@ const App: React.FC = () => {
     setProducts(prevProducts => [newProduct, ...prevProducts]);
   };
 
+  const handleEditProduct = (updatedProduct: Product) => {
+    setProducts(prevProducts => 
+      prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    );
+  };
+
+  const handleDeleteProduct = (productId: number) => {
+    setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+  };
+  
+  const handleAddStock = (productId: number, quantity: number) => {
+     setProducts(prevProducts => 
+      prevProducts.map(p => 
+        p.id === productId ? { ...p, stock: p.stock + quantity } : p
+      )
+    );
+  };
+
   const handleSale = (productId: number, quantity: number) => {
     // 1. Update product stock
     setProducts(prevProducts => 
@@ -47,7 +65,16 @@ const App: React.FC = () => {
       case 'Dashboard':
         return <Dashboard products={products} sales={sales} setCurrentPage={setCurrentPage} />;
       case 'Products':
-        return <Products products={products} onAddProduct={handleAddProduct} onSale={handleSale} />;
+        return (
+          <Products 
+            products={products} 
+            onAddProduct={handleAddProduct} 
+            onEditProduct={handleEditProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onAddStock={handleAddStock}
+            onSale={handleSale} 
+          />
+        );
       case 'Sales':
         return <Sales sales={sales} products={products} />;
       default:

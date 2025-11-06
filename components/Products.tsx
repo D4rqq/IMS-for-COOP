@@ -1,12 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import type { Product } from '../types';
 import AddProductModal from './AddProductModal';
+import EditProductModal from './EditProductModal';
 import SellProductModal from './SellProductModal';
-import { PlusIcon, DollarSignIcon } from './icons/Icons';
+import AddStockModal from './AddStockModal';
+import DeleteProductModal from './DeleteProductModal';
+import { PlusIcon, DollarSignIcon, EditIcon, DeleteIcon, AddStockIcon } from './icons/Icons';
 
 interface ProductsProps {
   products: Product[];
   onAddProduct: (newProduct: Omit<Product, 'id'>) => void;
+  onEditProduct: (product: Product) => void;
+  onDeleteProduct: (productId: number) => void;
+  onAddStock: (productId: number, quantity: number) => void;
   onSale: (productId: number, quantity: number) => void;
 }
 
@@ -29,12 +35,22 @@ const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
   );
 };
 
-
-const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onSale }) => {
+const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProduct, onDeleteProduct, onAddStock, onSale }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modal states
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isSellModalOpen, setSellModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isAddStockModalOpen, setAddStockModalOpen] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  
+  // State for the currently selected product for different actions
+  const [productForSale, setProductForSale] = useState<Product | null>(null);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToAddStock, setProductToAddStock] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+
 
   const filteredProducts = useMemo(() => 
     products.filter(product => 
@@ -43,23 +59,58 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onSale }) =
     ).sort((a,b) => a.name.localeCompare(b.name)), // Sort alphabetically
     [products, searchTerm]);
 
+  // --- Modal Handlers ---
+  const openSellModal = (product: Product) => {
+    setProductForSale(product);
+    setSellModalOpen(true);
+  };
+  
+  const openEditModal = (product: Product) => {
+    setProductToEdit(product);
+    setEditModalOpen(true);
+  };
+
+  const openAddStockModal = (product: Product) => {
+    setProductToAddStock(product);
+    setAddStockModalOpen(true);
+  };
+
+  const openDeleteModal = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteModalOpen(true);
+  };
+
+  // --- Action Handlers ---
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     onAddProduct(newProductData);
     setAddModalOpen(false);
   };
-
-  const openSellModal = (product: Product) => {
-    setSelectedProduct(product);
-    setSellModalOpen(true);
+  
+  const handleEditProduct = (updatedProduct: Product) => {
+    onEditProduct(updatedProduct);
+    setEditModalOpen(false);
   };
 
   const handleSellProduct = (quantity: number) => {
-    if (selectedProduct) {
-      onSale(selectedProduct.id, quantity);
+    if (productForSale) {
+      onSale(productForSale.id, quantity);
     }
     setSellModalOpen(false);
-    setSelectedProduct(null);
   }
+
+  const handleAddStock = (quantity: number) => {
+    if (productToAddStock) {
+      onAddStock(productToAddStock.id, quantity);
+    }
+    setAddStockModalOpen(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (productToDelete) {
+      onDeleteProduct(productToDelete.id);
+    }
+    setDeleteModalOpen(false);
+  };
 
   return (
     <>
@@ -110,14 +161,37 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onSale }) =
                                   <StockStatusBadge stock={product.stock} />
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <button 
-                                  onClick={() => openSellModal(product)}
-                                  disabled={product.stock === 0}
-                                  className="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition text-sm font-semibold flex items-center mx-auto"
-                                >
-                                  <DollarSignIcon className="mr-1 h-4 w-4" />
-                                  Sell
-                                </button>
+                                <div className="flex justify-center items-center space-x-2">
+                                    <button 
+                                        onClick={() => openSellModal(product)}
+                                        disabled={product.stock === 0}
+                                        className="p-2 rounded-full text-green-600 hover:bg-green-100 disabled:text-gray-300 disabled:bg-transparent transition"
+                                        title="Sell Product"
+                                    >
+                                        <DollarSignIcon />
+                                    </button>
+                                    <button 
+                                        onClick={() => openAddStockModal(product)}
+                                        className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition"
+                                        title="Add Stock"
+                                    >
+                                        <AddStockIcon />
+                                    </button>
+                                     <button 
+                                        onClick={() => openEditModal(product)}
+                                        className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 transition"
+                                        title="Edit Product"
+                                    >
+                                        <EditIcon />
+                                    </button>
+                                     <button 
+                                        onClick={() => openDeleteModal(product)}
+                                        className="p-2 rounded-full text-red-600 hover:bg-red-100 transition"
+                                        title="Delete Product"
+                                    >
+                                        <DeleteIcon />
+                                    </button>
+                                </div>
                               </td>
                           </tr>
                       ))}
@@ -125,17 +199,43 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onSale }) =
               </table>
           </div>
       </div>
+      
+      {/* Modals */}
       <AddProductModal 
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
         onAddProduct={handleAddProduct}
       />
-      {selectedProduct && (
+      {productToEdit && (
+        <EditProductModal
+          isOpen={isEditModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          productToEdit={productToEdit}
+          onEditProduct={handleEditProduct}
+        />
+      )}
+      {productForSale && (
         <SellProductModal
             isOpen={isSellModalOpen}
             onClose={() => setSellModalOpen(false)}
-            product={selectedProduct}
+            product={productForSale}
             onSell={handleSellProduct}
+        />
+      )}
+       {productToAddStock && (
+        <AddStockModal
+          isOpen={isAddStockModalOpen}
+          onClose={() => setAddStockModalOpen(false)}
+          product={productToAddStock}
+          onAddStock={handleAddStock}
+        />
+      )}
+       {productToDelete && (
+        <DeleteProductModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          product={productToDelete}
+          onDelete={handleDeleteConfirm}
         />
       )}
     </>
