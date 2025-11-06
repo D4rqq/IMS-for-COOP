@@ -1,83 +1,84 @@
 import React from 'react';
-import { products, sales } from '../data/mockData';
-import type { Page } from '../types';
+import type { Product, Sale, Page } from '../types';
 import { TotalRevenueIcon, ItemsSoldIcon, ProductsIcon, LowStockIcon } from './icons/Icons';
-// FIX: Import recharts components directly instead of using window.Recharts, which caused a TypeScript error.
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface DashboardProps {
+  products: Product[];
+  sales: Sale[];
   setCurrentPage: (page: Page) => void;
 }
 
-// --- Data Processing ---
-const totalRevenue = sales.reduce((acc, sale) => {
-  const product = products.find(p => p.id === sale.productId);
-  return acc + (product ? product.price * sale.quantity : 0);
-}, 0);
+const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }) => {
 
-const totalItemsSold = sales.reduce((acc, sale) => acc + sale.quantity, 0);
-
-const totalProducts = products.length;
-
-const lowStockItems = products.filter(p => p.stock < 10).length;
-
-const topSellingProducts = sales
-  .reduce((acc, sale) => {
+  // --- Data Processing ---
+  const totalRevenue = sales.reduce((acc, sale) => {
     const product = products.find(p => p.id === sale.productId);
-    if (product) {
-      acc[product.name] = (acc[product.name] || 0) + sale.quantity;
-    }
+    return acc + (product ? product.price * sale.quantity : 0);
+  }, 0);
+
+  const totalItemsSold = sales.reduce((acc, sale) => acc + sale.quantity, 0);
+
+  const totalProducts = products.length;
+
+  const lowStockItems = products.filter(p => p.stock < 10).length;
+
+  const topSellingProducts = sales
+    .reduce((acc, sale) => {
+      const product = products.find(p => p.id === sale.productId);
+      if (product) {
+        acc[product.name] = (acc[product.name] || 0) + sale.quantity;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+  const topSellingChartData = Object.entries(topSellingProducts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, quantity]) => ({ name: name.replace(/ \(.+\)/, ''), quantity }));
+
+  const salesOverTime = sales.reduce((acc, sale) => {
+    const date = sale.saleDate;
+    acc[date] = (acc[date] || 0) + sale.quantity;
     return acc;
   }, {} as Record<string, number>);
 
-const topSellingChartData = Object.entries(topSellingProducts)
-  .sort(([, a], [, b]) => b - a)
-  .slice(0, 5)
-  .map(([name, quantity]) => ({ name: name.replace(/ \(.+\)/, ''), quantity }));
-
-const salesOverTime = sales.reduce((acc, sale) => {
-  const date = sale.saleDate;
-  acc[date] = (acc[date] || 0) + sale.quantity;
-  return acc;
-}, {} as Record<string, number>);
-
-const salesChartData = Object.entries(salesOverTime)
-    .map(([date, sales]) => ({ date, sales }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const salesChartData = Object.entries(salesOverTime)
+      .map(([date, sales]) => ({ date, sales }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 
-const recentSales = sales
-  .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
-  .slice(0, 5)
-  .map(sale => {
-    const product = products.find(p => p.id === sale.productId);
-    return { ...sale, productName: product?.name || 'Unknown', price: product?.price || 0 };
-  });
+  const recentSales = sales
+    .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+    .slice(0, 5)
+    .map(sale => {
+      const product = products.find(p => p.id === sale.productId);
+      return { ...sale, productName: product?.name || 'Unknown', price: product?.price || 0 };
+    });
 
-// --- Components ---
+  // --- Components ---
 
-const StatCard: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  value: string;
-  onClick?: () => void;
-  color: string;
-}> = ({ icon, title, value, onClick, color }) => (
-  <div
-    className={`bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}
-    onClick={onClick}
-  >
-    <div className={`rounded-full p-3 ${color}`}>
-      {icon}
+  const StatCard: React.FC<{
+    icon: React.ReactNode;
+    title: string;
+    value: string;
+    onClick?: () => void;
+    color: string;
+  }> = ({ icon, title, value, onClick, color }) => (
+    <div
+      className={`bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
+      <div className={`rounded-full p-3 ${color}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm text-gray-500 font-medium">{title}</p>
+        <p className="text-2xl font-bold text-gray-800">{value}</p>
+      </div>
     </div>
-    <div>
-      <p className="text-sm text-gray-500 font-medium">{title}</p>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-    </div>
-  </div>
-);
+  );
 
-const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
   return (
     <div className="space-y-6">
       {/* Stat Cards Grid */}

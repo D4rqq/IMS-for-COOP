@@ -68,11 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
         <nav className="flex-grow">
           <NavLink icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === 'Dashboard'} onClick={() => handleNavigation('Dashboard')} />
           <NavLink icon={<ProductsIcon />} label="Products" isActive={currentPage === 'Products'} onClick={() => handleNavigation('Products')} />
+          <NavLink icon={<SalesIcon />} label="Sales" isActive={currentPage === 'Sales'} onClick={() => handleNavigation('Sales')} />
           {/* Add other links here as needed, disabling them for now */}
-          <a href="#" className="flex items-center px-4 py-3 text-lg text-gray-500 cursor-not-allowed">
-            <SalesIcon />
-            <span className="mx-4">Sales</span>
-          </a>
           <a href="#" className="flex items-center px-4 py-3 text-lg text-gray-500 cursor-not-allowed">
             <ReportsIcon />
             <span className="mx-4">Reports</span>
