@@ -21,10 +21,10 @@ const NavLink: React.FC<{
       e.preventDefault();
       onClick();
     }}
-    className={`flex items-center px-4 py-3 text-lg transition-colors duration-200 ${
+    className={`flex items-center px-4 py-3 text-base transition-colors duration-200 rounded-lg ${
       isActive
-        ? 'bg-psu-gold/20 text-white font-bold border-l-4 border-psu-gold'
-        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+        ? 'bg-psu-gold/10 text-psu-gold font-bold'
+        : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
     }`}
   >
     {icon}
@@ -51,33 +51,27 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
         ></div>
       )}
 
-      <aside className={`fixed md:relative inset-y-0 left-0 bg-psu-maroon text-white w-64 space-y-6 py-7 px-2 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-30 flex flex-col`}>
-        <div className="px-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-             <img src="https://dhvsu.edu.ph/images/about_pampanga_state_u/pampanga-state-u-logo-small.png" alt="PSU Logo" className="h-12 w-12" />
-            <div className="flex flex-col">
-              <span className="text-white text-lg font-extrabold tracking-wider">PSU Coop</span>
-              <span className="text-xs text-psu-gold font-semibold">IMS Portal</span>
-            </div>
-          </div>
-          <button className="md:hidden text-white" onClick={() => setSidebarOpen(false)}>
-            <MenuCloseIcon className="h-6 w-6" />
+      <aside className={`fixed md:relative inset-y-0 left-0 bg-psu-maroon text-white w-64 space-y-6 py-7 px-4 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-30 flex flex-col`}>
+        <div className="flex items-center justify-between px-4">
+          <a href="#" className="flex items-center space-x-3" onClick={(e) => {e.preventDefault(); handleNavigation('Dashboard');}}>
+            <img src="https://dhvsu.edu.ph/images/about_pampanga_state_u/pampanga-state-u-logo-small.png" alt="PSU Logo" className="h-10 w-10"/>
+            <span className="text-xl font-bold text-white">PSU Coop IMS</span>
+          </a>
+          <button className="md:hidden text-gray-300 hover:text-white" onClick={() => setSidebarOpen(false)}>
+            <MenuCloseIcon />
           </button>
         </div>
 
-        <nav className="flex-grow">
+        <nav className="flex-1">
           <NavLink icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === 'Dashboard'} onClick={() => handleNavigation('Dashboard')} />
           <NavLink icon={<ProductsIcon />} label="Products" isActive={currentPage === 'Products'} onClick={() => handleNavigation('Products')} />
           <NavLink icon={<SalesIcon />} label="Sales" isActive={currentPage === 'Sales'} onClick={() => handleNavigation('Sales')} />
-          {/* Add other links here as needed, disabling them for now */}
-          <a href="#" className="flex items-center px-4 py-3 text-lg text-gray-500 cursor-not-allowed">
-            <ReportsIcon />
-            <span className="mx-4">Reports</span>
-          </a>
+          <NavLink icon={<ReportsIcon />} label="Reports" isActive={currentPage === 'Reports'} onClick={() => handleNavigation('Reports')} />
         </nav>
         
-        <div className="px-4 py-2 mt-auto">
+        <div className="px-4 py-2 border-t border-gray-700">
             <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} PSU Cooperative</p>
+            <p className="text-xs text-gray-400">All Rights Reserved</p>
         </div>
       </aside>
     </>

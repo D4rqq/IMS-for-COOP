@@ -33,7 +33,9 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
     }, {} as Record<string, number>);
 
   const topSellingChartData = Object.entries(topSellingProducts)
-    .sort(([, a], [, b]) => b - a)
+    // FIX: Using index access for sorting to avoid potential type inference issues with destructuring in the callback.
+    // FIX: Explicitly cast values to Number to ensure correct type for the arithmetic operation.
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
     .slice(0, 5)
     .map(([name, quantity]) => ({ name: name.replace(/ \(.+\)/, ''), quantity }));
 
@@ -44,11 +46,12 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
   }, {} as Record<string, number>);
 
   const salesChartData = Object.entries(salesOverTime)
-      .map(([date, sales]) => ({ date, sales }))
+      // FIX: Renamed destructured variable from `sales` to `numSales` to avoid shadowing the `sales` prop.
+      .map(([date, numSales]) => ({ date, sales: numSales }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 
-  const recentSales = sales
+  const recentSales = [...sales]
     .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
     .slice(0, 5)
     .map(sale => {
@@ -66,54 +69,53 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
     color: string;
   }> = ({ icon, title, value, onClick, color }) => (
     <div
-      className={`bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}
+      className={`bg-white p-5 rounded-lg shadow-md flex items-center space-x-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className={`rounded-full p-3 ${color}`}>
         {icon}
       </div>
       <div>
-        <p className="text-sm text-gray-500 font-medium">{title}</p>
-        <p className="text-2xl font-bold text-gray-800">{value}</p>
+        <p className="text-sm text-slate-500 font-medium">{title}</p>
+        <p className="text-2xl font-bold text-slate-800">{value}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard icon={<TotalRevenueIcon />} title="Total Revenue" value={`₱${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="bg-green-100" />
         <StatCard icon={<ItemsSoldIcon />} title="Items Sold" value={totalItemsSold.toLocaleString()} color="bg-blue-100"/>
-        <StatCard icon={<ProductsIcon />} title="Total Products" value={totalProducts.toString()} onClick={() => setCurrentPage('Products')} color="bg-yellow-100"/>
+        <StatCard icon={<ProductsIcon className="w-6 h-6 text-yellow-500" />} title="Total Products" value={totalProducts.toString()} onClick={() => setCurrentPage('Products')} color="bg-yellow-100"/>
         <StatCard icon={<LowStockIcon />} title="Low Stock Items" value={lowStockItems.toString()} onClick={() => setCurrentPage('Products')} color="bg-red-100" />
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
-          <h3 className="font-bold text-gray-800 text-lg mb-4">Sales Over Time</h3>
+          <h3 className="font-bold text-slate-800 text-lg mb-4">Sales Over Time</h3>
            <ResponsiveContainer width="100%" height={300}>
             <LineChart data={salesChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" fontSize={12} tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}/>
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis dataKey="date" fontSize={12} tickFormatter={(tick) => new Date(tick).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} tick={{ fill: '#64748b' }}/>
+              <YAxis tick={{ fill: '#64748b' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '0.5rem' }}/>
               <Legend />
-              <Line type="monotone" dataKey="sales" stroke="#800000" strokeWidth={2} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="sales" stroke="#800000" strokeWidth={2} activeDot={{ r: 8 }} dot={{r: 4}} />
             </LineChart>
           </ResponsiveContainer>
         </div>
         <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-          <h3 className="font-bold text-gray-800 text-lg mb-4">Top 5 Selling Products</h3>
+          <h3 className="font-bold text-slate-800 text-lg mb-4">Top 5 Selling Products</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topSellingChartData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0"/>
               <XAxis type="number" hide/>
-              <YAxis dataKey="name" type="category" width={100} fontSize={12} tickLine={false} axisLine={false}/>
-              <Tooltip cursor={{fill: '#f3f4f6'}}/>
-              <Legend />
-              <Bar dataKey="quantity" fill="#FFD700" name="Units Sold" barSize={20} />
+              <YAxis dataKey="name" type="category" width={100} fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }}/>
+              <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '0.5rem' }}/>
+              <Bar dataKey="quantity" fill="#FFD700" name="Units Sold" barSize={20} radius={[0, 4, 4, 0]}/>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -121,20 +123,20 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
       
       {/* Recent Sales Table */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="font-bold text-gray-800 text-lg mb-4">Recent Sales</h3>
+        <h3 className="font-bold text-slate-800 text-lg mb-4">Recent Sales</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                <th className="py-3 px-4">Product Name</th>
+              <tr className="bg-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                <th className="py-3 px-4 rounded-l-lg">Product Name</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4 text-right">Quantity</th>
-                <th className="py-3 px-4 text-right">Total Amount</th>
+                <th className="py-3 px-4 text-right rounded-r-lg">Total Amount</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700">
+            <tbody className="text-slate-700">
               {recentSales.map(sale => (
-                <tr key={sale.id} className="border-b border-gray-200 hover:bg-gray-50">
+                <tr key={sale.id} className="border-b border-slate-200 hover:bg-slate-50">
                   <td className="py-3 px-4 font-medium">{sale.productName}</td>
                   <td className="py-3 px-4">{new Date(sale.saleDate).toLocaleDateString()}</td>
                   <td className="py-3 px-4 text-right">{sale.quantity}</td>

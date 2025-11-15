@@ -4,14 +4,31 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Sales from './components/Sales';
+import Reports from './components/Reports';
 import Header from './components/Header';
+import LoginPage from './components/LoginPage';
 import { products as initialProducts, sales as initialSales } from './data/mockData';
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [sales, setSales] = useState<Sale[]>(initialSales);
+
+  const handleLogin = (username: string, password: string): boolean => {
+    // Hardcoded credentials for demonstration
+    if (username === 'admin' && password === 'password') {
+      setIsAuthenticated(true);
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentPage('Dashboard'); // Reset to default page on logout
+  };
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
     const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
@@ -77,17 +94,23 @@ const App: React.FC = () => {
         );
       case 'Sales':
         return <Sales sales={sales} products={products} />;
+      case 'Reports':
+        return <Reports products={products} sales={sales} />;
       default:
         return <Dashboard products={products} sales={sales} setCurrentPage={setCurrentPage} />;
     }
   };
 
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
+    <div className="flex h-screen bg-slate-50 font-sans">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header currentPage={currentPage} setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6 lg:p-8">
+        <Header currentPage={currentPage} setSidebarOpen={setSidebarOpen} onLogout={handleLogout} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6 lg:p-8">
           {renderPage()}
         </main>
       </div>

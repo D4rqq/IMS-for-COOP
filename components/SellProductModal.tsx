@@ -15,8 +15,10 @@ const SellProductModal: React.FC<SellProductModalProps> = ({ isOpen, onClose, pr
 
   useEffect(() => {
     // Reset state when modal opens or product changes
-    setQuantity(1);
-    setError('');
+    if (isOpen) {
+      setQuantity(1);
+      setError('');
+    }
   }, [isOpen, product]);
 
   if (!isOpen) {
@@ -49,30 +51,38 @@ const SellProductModal: React.FC<SellProductModalProps> = ({ isOpen, onClose, pr
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="sellProductModalTitle"
+      onClick={onClose}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all">
+      <div 
+        className="bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all animate-fade-in-scale"
+        onClick={(e) => e.stopPropagation()}
+        >
         <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h2 id="sellProductModalTitle" className="text-2xl font-bold text-gray-800">Sell Product</h2>
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex flex-col">
+                    <h2 id="sellProductModalTitle" className="text-2xl font-bold text-slate-800">Sell Product</h2>
+                    <p className="text-sm text-slate-500">{product.name}</p>
+                </div>
                 <button 
                     onClick={onClose} 
-                    className="text-gray-400 hover:text-gray-600"
+                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                     aria-label="Close modal"
                 >
                     <MenuCloseIcon className="h-6 w-6" />
                 </button>
             </div>
-            <div className="mb-4">
-                <p className="font-semibold text-lg text-gray-700">{product.name}</p>
-                <p className="text-sm text-gray-500">Available Stock: {product.stock}</p>
-            </div>
+            
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="font-semibold text-lg text-slate-700">{product.name}</p>
+                    <p className="text-sm text-slate-500">Available Stock: <span className="font-bold text-slate-700">{product.stock}</span></p>
+                </div>
                 <div>
-                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity to Sell</label>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-slate-700">Quantity to Sell</label>
                     <input
                         type="number"
                         id="quantity"
@@ -81,7 +91,7 @@ const SellProductModal: React.FC<SellProductModalProps> = ({ isOpen, onClose, pr
                         onChange={handleQuantityChange}
                         min="1"
                         max={product.stock}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-psu-maroon focus:border-psu-maroon sm:text-sm"
+                        className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-psu-maroon/80 sm:text-sm transition"
                         required
                         autoFocus
                     />
@@ -89,22 +99,22 @@ const SellProductModal: React.FC<SellProductModalProps> = ({ isOpen, onClose, pr
                 </div>
 
                 <div className="pt-2">
-                    <p className="text-lg font-bold text-right text-gray-800">
+                    <p className="text-xl font-bold text-right text-slate-800">
                         Total: ₱{totalAmount}
                     </p>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4">
+                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 mt-6">
                     <button 
                         type="button" 
                         onClick={onClose}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold transition"
+                        className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 font-semibold transition-colors"
                     >
                         Cancel
                     </button>
                     <button 
                         type="submit"
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold transition"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold transition-colors shadow-sm hover:shadow-md"
                         disabled={!!error || quantity <= 0}
                     >
                         Confirm Sale
