@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Page, Product, Sale } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -7,14 +7,42 @@ import Sales from './components/Sales';
 import Reports from './components/Reports';
 import Header from './components/Header';
 import LoginPage from './components/LoginPage';
-import { products as initialProducts, sales as initialSales } from './data/mockData';
+// Use API instead of Storage
+import * as api from './data/api';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [sales, setSales] = useState<Sale[]>(initialSales);
+  
+  // Initial state is empty; populated by useEffect
+  const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load data from API when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [productsData, salesData] = await Promise.all([
+        api.fetchProducts(),
+        api.fetchSales()
+      ]);
+      setProducts(productsData);
+      setSales(salesData);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+      alert("Failed to connect to the backend. Is the server running on port 3001?");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = (username: string, password: string): boolean => {
     // Hardcoded credentials for demonstration
@@ -27,57 +55,85 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setCurrentPage('Dashboard'); // Reset to default page on logout
+    setCurrentPage('Dashboard');
   };
 
-  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
-    const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-    const newProduct: Product = {
-      ...newProductData,
-      id: newId,
-      imageUrl: newProductData.imageUrl || `https://picsum.photos/seed/${newId}/200`,
-    };
-    setProducts(prevProducts => [newProduct, ...prevProducts]);
+  const handleAddProduct = async (newProductData: Omit<Product, 'id'>) => {
+    try {
+      const newProduct = await api.addProduct({
+        ...newProductData,
+        imageUrl: newProductData.imageUrl || `https://picsum.photos/seed/${Date.now()}/200`,
+      });
+      setProducts(prev => [newProduct, ...prev]);
+    } catch (error) {
+      console.error("Error adding product:", error);
+      alert("Failed to add product.");
+    }
   };
 
-  const handleEditProduct = (updatedProduct: Product) => {
-    setProducts(prevProducts => 
-      prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-    );
+  const handleEditProduct = async (updatedProduct: Product) => {
+    try {
+      await api.updateProduct(updatedProduct);
+      setProducts(prevProducts => 
+        prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+      );
+    } catch (error) {
+      console.error("Error updating product:", error);
+      alert("Failed to update product.");
+    }
   };
 
-  const handleDeleteProduct = (productId: number) => {
-    setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+  const handleDeleteProduct = async (productId: number) => {
+    try {
+      await api.deleteProduct(productId);
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product.");
+    }
   };
   
-  const handleAddStock = (productId: number, quantity: number) => {
-     setProducts(prevProducts => 
-      prevProducts.map(p => 
-        p.id === productId ? { ...p, stock: p.stock + quantity } : p
-      )
-    );
+  const handleAddStock = async (productId: number, quantity: number) => {
+     try {
+       await api.addStock(productId, quantity);
+       // Optimistically update UI or refetch
+       setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === productId ? { ...p, stock: p.stock + quantity } : p
+        )
+      );
+     } catch (error) {
+      console.error("Error adding stock:", error);
+      alert("Failed to add stock.");
+     }
   };
 
-  const handleSale = (productId: number, quantity: number) => {
-    // 1. Update product stock
-    setProducts(prevProducts => 
-      prevProducts.map(p => 
-        p.id === productId ? { ...p, stock: p.stock - quantity } : p
-      )
-    );
-
-    // 2. Add new sale record
-    const newSaleId = sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 1 : 1;
-    const newSale: Sale = {
-      id: newSaleId,
-      productId: productId,
-      quantity: quantity,
-      saleDate: new Date().toISOString().split('T')[0], // Use today's date
-    };
-    setSales(prevSales => [newSale, ...prevSales]);
+  const handleSale = async (productId: number, quantity: number) => {
+    try {
+      const newSale = await api.createSale(productId, quantity);
+      
+      // Update UI state locally to reflect changes immediately
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === productId ? { ...p, stock: p.stock - quantity } : p
+        )
+      );
+      setSales(prevSales => [newSale, ...prevSales]);
+    } catch (error) {
+      console.error("Error recording sale:", error);
+      alert("Failed to record sale. Check stock levels.");
+    }
   };
 
   const renderPage = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-psu-maroon"></div>
+        </div>
+      );
+    }
+
     switch (currentPage) {
       case 'Dashboard':
         return <Dashboard products={products} sales={sales} setCurrentPage={setCurrentPage} />;
