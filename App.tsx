@@ -83,7 +83,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (productId: number) => {
+  const handleDeleteProduct = async (productId: number | string) => {
     try {
       await api.deleteProduct(productId);
       setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
@@ -93,7 +93,7 @@ const App: React.FC = () => {
     }
   };
   
-  const handleAddStock = async (productId: number, quantity: number) => {
+  const handleAddStock = async (productId: number | string, quantity: number) => {
      try {
        await api.addStock(productId, quantity);
        // Optimistically update UI or refetch
@@ -108,7 +108,7 @@ const App: React.FC = () => {
      }
   };
 
-  const handleSale = async (productId: number, quantity: number) => {
+  const handleSale = async (productId: number | string, quantity: number) => {
     try {
       const newSale = await api.createSale(productId, quantity);
       

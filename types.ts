@@ -1,6 +1,6 @@
 
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   category: string;
   price: number;
@@ -9,8 +9,8 @@ export interface Product {
 }
 
 export interface Sale {
-  id: number;
-  productId: number;
+  id: number | string;
+  productId: number | string;
   quantity: number;
   saleDate: string; // ISO 8601 format: "YYYY-MM-DD"
 }

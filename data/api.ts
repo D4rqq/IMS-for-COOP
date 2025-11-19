@@ -38,14 +38,14 @@ export const updateProduct = async (product: Product): Promise<Product> => {
   return json.data;
 };
 
-export const deleteProduct = async (id: number): Promise<void> => {
+export const deleteProduct = async (id: number | string): Promise<void> => {
   const response = await fetch(`${API_URL}/products/${id}`, {
     method: 'DELETE',
   });
   await handleResponse(response);
 };
 
-export const addStock = async (id: number, quantity: number): Promise<void> => {
+export const addStock = async (id: number | string, quantity: number): Promise<void> => {
   const response = await fetch(`${API_URL}/products/${id}/stock`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -60,7 +60,7 @@ export const fetchSales = async (): Promise<Sale[]> => {
   return json.data;
 };
 
-export const createSale = async (productId: number, quantity: number): Promise<Sale> => {
+export const createSale = async (productId: number | string, quantity: number): Promise<Sale> => {
   const response = await fetch(`${API_URL}/sales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

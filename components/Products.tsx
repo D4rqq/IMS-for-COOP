@@ -12,9 +12,9 @@ interface ProductsProps {
   products: Product[];
   onAddProduct: (newProduct: Omit<Product, 'id'>) => void;
   onEditProduct: (product: Product) => void;
-  onDeleteProduct: (productId: number) => void;
-  onAddStock: (productId: number, quantity: number) => void;
-  onSale: (productId: number, quantity: number) => void;
+  onDeleteProduct: (productId: number | string) => void;
+  onAddStock: (productId: number | string, quantity: number) => void;
+  onSale: (productId: number | string, quantity: number) => void;
 }
 
 const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
@@ -51,7 +51,7 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToAddStock, setProductToAddStock] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState<number | string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
 
