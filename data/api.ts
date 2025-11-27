@@ -2,19 +2,54 @@
 import type { Product, Sale, User } from '../types';
 import * as storage from './storage';
 
-// Determine API URL dynamically
-// If the app is running on port 3001 (served by backend), use relative path '/api'
-// If running on dev port (like 5173 or 3000), use full localhost:3001 URL
-const isServedByBackend = typeof window !== 'undefined' && window.location.port === '3001';
-const API_URL = isServedByBackend ? '/api' : 'http://localhost:3001/api';
+const API_URL = 'http://localhost:8000/api';
 
-// Helper to handle response
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'API request failed');
+// --- Helper Functions ---
+
+const getAuthToken = () => localStorage.getItem('auth_token');
+
+const getHeaders = (isMultipart = false) => {
+  const headers: HeadersInit = {
+    'Accept': 'application/json',
+  };
+  
+  if (!isMultipart) {
+    headers['Content-Type'] = 'application/json';
   }
-  return response.json();
+
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+const handleResponse = async (response: Response) => {
+  const contentType = response.headers.get("content-type");
+  let data = null;
+  
+  if (contentType && contentType.indexOf("application/json") !== -1) {
+    data = await response.json();
+  }
+
+  if (!response.ok) {
+    // Check for validation errors from Laravel (422)
+    if (response.status === 422 && data && data.errors) {
+        // Flatten errors into a single string
+        const errorMsg = Object.values(data.errors).flat().join('\n');
+        throw new Error(errorMsg);
+    }
+    
+    // Check for auth errors (401)
+    if (response.status === 401) {
+        localStorage.removeItem('auth_token');
+        throw new Error("Unauthorized. Please login again.");
+    }
+
+    throw new Error(data?.message || data?.error || 'API request failed');
+  }
+  return data;
 };
 
 // --- AUTH & USERS ---
@@ -23,26 +58,52 @@ export const login = async (username: string, password: string): Promise<User> =
   try {
     const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json' 
+        },
         body: JSON.stringify({ username, password }),
     });
+    
     const json = await handleResponse(response);
-    return json.data;
+    
+    // Save Token
+    if (json.token) {
+        localStorage.setItem('auth_token', json.token);
+    }
+
+    // Map Laravel User to Frontend User
+    const user = json.user;
+    return {
+        id: user.id,
+        username: user.username,
+        fullName: user.full_name, // Map snake_case to camelCase
+        role: user.role
+    };
   } catch (error) {
-    console.warn("Backend unreachable. Falling back to local storage.");
-    // Fallback: Check local users
+    console.warn("Backend login failed. Checking local storage mock...");
+    // Fallback for demo purposes if backend is down
     const users = storage.getStoredUsers();
     const user = users.find(u => u.username === username && u.password === password);
     if (user) return user;
-    throw new Error("Invalid username or password");
+    throw error;
   }
 };
 
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    const response = await fetch(`${API_URL}/users`);
+    const response = await fetch(`${API_URL}/users`, {
+        headers: getHeaders()
+    });
     const json = await handleResponse(response);
-    return json.data;
+    
+    // Map Laravel resource collection
+    return json.data.map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        fullName: u.full_name,
+        role: u.role
+    }));
   } catch (error) {
     return storage.getStoredUsers();
   }
@@ -50,68 +111,68 @@ export const fetchUsers = async (): Promise<User[]> => {
 
 export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
   try {
+    const payload = {
+        username: user.username,
+        password: user.password,
+        full_name: user.fullName, // Map to snake_case
+        role: user.role
+    };
+
     const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
     });
     const json = await handleResponse(response);
-    return json.data;
+    const u = json.data;
+    
+    return {
+        id: u.id,
+        username: u.username,
+        fullName: u.full_name,
+        role: u.role
+    };
   } catch (error) {
-    const users = storage.getStoredUsers();
-    if (users.some(u => u.username === user.username)) {
-      throw new Error("Username already exists");
-    }
-    const newUser = { ...user, id: Date.now() };
-    const updatedUsers = [...users, newUser];
-    storage.saveStoredUsers(updatedUsers);
-    return newUser;
+     throw error;
   }
 };
 
 export const updateUser = async (user: User): Promise<User> => {
   try {
-    const response = await fetch(`${API_URL}/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
-    });
-    const json = await handleResponse(response);
-    return json.data;
-  } catch (error) {
-    // Fallback logic for local storage
-    const users = storage.getStoredUsers();
-    
-    // Check uniqueness excluding self
-    if (users.some(u => u.username === user.username && u.id !== user.id)) {
-      throw new Error("Username already exists");
+    const payload: any = {
+        username: user.username,
+        full_name: user.fullName,
+        role: user.role
+    };
+    if (user.password) {
+        payload.password = user.password;
     }
 
-    const updatedUsers = users.map(u => {
-        if (u.id === user.id) {
-            // Only update password if provided
-            const password = (user.password && user.password.trim() !== "") ? user.password : u.password;
-            return { ...user, password };
-        }
-        return u;
+    const response = await fetch(`${API_URL}/users/${user.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
     });
-
-    storage.saveStoredUsers(updatedUsers);
-    return updatedUsers.find(u => u.id === user.id) as User;
+    const json = await handleResponse(response);
+    const u = json.data;
+    
+    return {
+        id: u.id,
+        username: u.username,
+        fullName: u.full_name,
+        role: u.role
+    };
+  } catch (error) {
+    throw error;
   }
 };
 
 export const deleteUser = async (id: number | string): Promise<void> => {
-  try {
     const response = await fetch(`${API_URL}/users/${id}`, {
         method: 'DELETE',
+        headers: getHeaders()
     });
     await handleResponse(response);
-  } catch (error) {
-    const users = storage.getStoredUsers();
-    const updatedUsers = users.filter(u => u.id !== id);
-    storage.saveStoredUsers(updatedUsers);
-  }
 };
 
 
@@ -119,9 +180,20 @@ export const deleteUser = async (id: number | string): Promise<void> => {
 
 export const fetchProducts = async (): Promise<Product[]> => {
   try {
-    const response = await fetch(`${API_URL}/products`);
+    const response = await fetch(`${API_URL}/products`, {
+        headers: getHeaders()
+    });
     const json = await handleResponse(response);
-    return json.data;
+    
+    // Map Laravel fields
+    return json.data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        price: Number(p.price),
+        stock: p.stock,
+        imageUrl: p.image_url // Map snake_case
+    }));
   } catch (error) {
     console.warn("Backend unreachable. Serving local products.");
     return storage.getStoredProducts();
@@ -129,118 +201,119 @@ export const fetchProducts = async (): Promise<Product[]> => {
 };
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
-  try {
+    const payload = {
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        stock: product.stock,
+        image_url: product.imageUrl // Map to snake_case
+    };
+
     const response = await fetch(`${API_URL}/products`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product),
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
     });
     const json = await handleResponse(response);
-    return json.data;
-  } catch (error) {
-    const products = storage.getStoredProducts();
-    const newProduct = { ...product, id: Date.now() };
-    const updatedProducts = [newProduct, ...products];
-    storage.saveStoredProducts(updatedProducts);
-    return newProduct;
-  }
+    const p = json.data;
+    return {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        price: Number(p.price),
+        stock: p.stock,
+        imageUrl: p.image_url
+    };
 };
 
 export const updateProduct = async (product: Product): Promise<Product> => {
-  try {
+    const payload = {
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        stock: product.stock,
+        image_url: product.imageUrl
+    };
+
     const response = await fetch(`${API_URL}/products/${product.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product),
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
     });
     const json = await handleResponse(response);
-    return json.data;
-  } catch (error) {
-    const products = storage.getStoredProducts();
-    const updatedProducts = products.map(p => p.id === product.id ? product : p);
-    storage.saveStoredProducts(updatedProducts);
-    return product;
-  }
+    const p = json.data;
+    return {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        price: Number(p.price),
+        stock: p.stock,
+        imageUrl: p.image_url
+    };
 };
 
 export const deleteProduct = async (id: number | string): Promise<void> => {
-  try {
     const response = await fetch(`${API_URL}/products/${id}`, {
       method: 'DELETE',
+      headers: getHeaders()
     });
     await handleResponse(response);
-  } catch (error) {
-    const products = storage.getStoredProducts();
-    const updatedProducts = products.filter(p => p.id !== id);
-    storage.saveStoredProducts(updatedProducts);
-  }
 };
 
 export const addStock = async (id: number | string, quantity: number): Promise<void> => {
-  try {
     const response = await fetch(`${API_URL}/products/${id}/stock`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify({ quantity }),
     });
     await handleResponse(response);
-  } catch (error) {
-    const products = storage.getStoredProducts();
-    const updatedProducts = products.map(p => 
-      p.id === id ? { ...p, stock: p.stock + quantity } : p
-    );
-    storage.saveStoredProducts(updatedProducts);
-  }
 };
 
 // --- SALES ---
 
 export const fetchSales = async (): Promise<Sale[]> => {
   try {
-    const response = await fetch(`${API_URL}/sales`);
+    const response = await fetch(`${API_URL}/sales`, {
+        headers: getHeaders()
+    });
     const json = await handleResponse(response);
-    return json.data;
+    
+    // Map Laravel response structure
+    // Laravel Resource returns: { id, product: {...}, quantity, sale_date }
+    // Frontend expects: { id, productId, quantity, saleDate }
+    return json.data.map((s: any) => ({
+        id: s.id,
+        productId: s.product.id, // Extract ID from nested object
+        quantity: s.quantity,
+        saleDate: s.sale_date // Map snake_case
+    }));
   } catch (error) {
     return storage.getStoredSales();
   }
 };
 
 export const createSale = async (productId: number | string, quantity: number): Promise<Sale> => {
-  try {
+    // Laravel expects product_id
+    const payload = {
+        product_id: productId,
+        quantity: quantity
+    };
+
     const response = await fetch(`${API_URL}/sales`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    // Laravel returns just a message on create in the Controller provided: response()->json(['message' => 'Sale created']);
+    // So we can't return the full new sale object from the API response alone.
+    // However, to keep the UI snappy, we can return a constructed object.
+    
+    await handleResponse(response);
+
+    return {
+        id: Date.now(), // Temporary ID since API doesn't return it in provided controller code
         productId,
         quantity,
         saleDate: new Date().toISOString().split('T')[0]
-      }),
-    });
-    const json = await handleResponse(response);
-    return json.data;
-  } catch (error) {
-    // Fallback logic simulating backend transaction
-    const products = storage.getStoredProducts();
-    const productIndex = products.findIndex(p => p.id === productId);
-    
-    if (productIndex === -1) throw new Error("Product not found");
-    if (products[productIndex].stock < quantity) throw new Error("Insufficient stock");
-    
-    // Update stock
-    products[productIndex] = { ...products[productIndex], stock: products[productIndex].stock - quantity };
-    storage.saveStoredProducts(products);
-
-    // Create sale
-    const sales = storage.getStoredSales();
-    const newSale: Sale = {
-      id: Date.now(),
-      productId,
-      quantity,
-      saleDate: new Date().toISOString().split('T')[0]
     };
-    const updatedSales = [newSale, ...sales];
-    storage.saveStoredSales(updatedSales);
-    
-    return newSale;
-  }
 };
