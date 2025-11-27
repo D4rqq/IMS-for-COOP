@@ -2,7 +2,7 @@ import React, { useState, FormEvent } from 'react';
 import { UserIcon, LockIcon, EyeIcon, EyeOffIcon, WarningIcon } from './icons/Icons';
 
 interface LoginPageProps {
-  onLogin: (username: string, password: string) => boolean;
+  onLogin: (username: string, password: string) => Promise<boolean>;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -10,18 +10,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
     // Basic sanitization to remove potential HTML tags from the username.
     const sanitizedUsername = username.replace(/<[^>]*>?/gm, '');
     
-    const success = onLogin(sanitizedUsername, password);
+    const success = await onLogin(sanitizedUsername, password);
 
     if (!success) {
       setError('Invalid username or password. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -53,7 +56,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   autoComplete="username"
                   required
                   className="block w-full rounded-md border-slate-300 py-3 pl-10 pr-3 text-black shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-psu-maroon/80 sm:text-sm"
-                  placeholder="admin"
+                  placeholder="Enter username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
@@ -73,7 +76,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   autoComplete="current-password"
                   required
                   className="block w-full rounded-md border-slate-300 py-3 pl-10 pr-10 text-black shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-psu-maroon/80 sm:text-sm"
-                  placeholder="password"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -98,9 +101,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-psu-maroon hover:bg-psu-maroon/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-psu-maroon/80 transition-all duration-300 hover:-translate-y-0.5"
+                disabled={loading}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-psu-maroon hover:bg-psu-maroon/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-psu-maroon/80 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </button>
             </div>
           </form>
@@ -109,7 +113,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="mt-8 text-center">
             <div className="inline-block bg-slate-100 border border-slate-200 rounded-lg px-4 py-2">
                 <p className="text-xs text-slate-500">
-                    For demonstration: use <span className="font-semibold text-slate-600">admin</span> / <span className="font-semibold text-slate-600">password</span>
+                    Default Admin: <span className="font-semibold text-slate-600">admin / password</span>
+                    <br/>
+                    Default Staff: <span className="font-semibold text-slate-600">staff / password</span>
                 </p>
             </div>
         </div>

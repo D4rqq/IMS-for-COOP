@@ -17,7 +17,6 @@ const productSchema = new mongoose.Schema({
   imageUrl: { type: String }
 });
 
-// Transform _id to id for frontend compatibility
 productSchema.set('toJSON', {
   transform: (document, returnedObject) => {
     returnedObject.id = returnedObject._id.toString();
@@ -40,16 +39,55 @@ saleSchema.set('toJSON', {
   }
 });
 
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true }, // In production, hash this!
+  fullName: { type: String, required: true },
+  role: { type: String, enum: ['admin', 'staff'], default: 'staff' }
+});
+
+userSchema.set('toJSON', {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString();
+    delete returnedObject._id;
+    delete returnedObject.__v;
+    delete returnedObject.password; // Never return password
+  }
+});
+
 const Product = mongoose.model('Product', productSchema);
 const Sale = mongoose.model('Sale', saleSchema);
+const User = mongoose.model('User', userSchema);
 
 // --- Seed Data ---
 
 const seedData = async () => {
   try {
+    // 1. Seed Users
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log("Seeding users...");
+      await User.insertMany([
+        { 
+          username: 'admin', 
+          password: 'password', 
+          fullName: 'Admin User', 
+          role: 'admin' 
+        },
+        { 
+          username: 'staff', 
+          password: 'password', 
+          fullName: 'Staff Member', 
+          role: 'staff' 
+        }
+      ]);
+      console.log("Users seeded.");
+    }
+
+    // 2. Seed Products
     const count = await Product.countDocuments();
     if (count === 0) {
-      console.log("Seeding database with initial data...");
+      console.log("Seeding products...");
       const products = [
         { name: 'CICS Uniform (Male)', category: 'Department Uniform', price: 850.00, stock: 45, imageUrl: 'https://picsum.photos/seed/cicsmale/200' },
         { name: 'CICS Uniform (Female)', category: 'Department Uniform', price: 900.00, stock: 32, imageUrl: 'https://picsum.photos/seed/cicsfemale/200' },
@@ -66,22 +104,28 @@ const seedData = async () => {
       const createdProducts = await Product.insertMany(products);
       console.log("Products seeded.");
 
-      // Generate dummy sales
+      // 3. Seed Sales (Generate 6 months of data)
+      console.log("Seeding sales...");
       const sales = [];
       const today = new Date();
-      for (let i = 0; i < 30; i++) {
+      // Generate data for the last 180 days (approx 6 months)
+      for (let i = 0; i < 180; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const salesPerDay = Math.floor(Math.random() * 5) + 1;
         
-        for (let j = 0; j < salesPerDay; j++) {
-          const randomProduct = createdProducts[Math.floor(Math.random() * createdProducts.length)];
-          sales.push({
-            productId: randomProduct._id,
-            quantity: Math.floor(Math.random() * 3) + 1,
-            saleDate: dateStr
-          });
+        // Randomly skip some days to make it realistic
+        if (Math.random() > 0.1) { 
+            const salesPerDay = Math.floor(Math.random() * 8) + 1; // 1-8 sales
+            
+            for (let j = 0; j < salesPerDay; j++) {
+            const randomProduct = createdProducts[Math.floor(Math.random() * createdProducts.length)];
+            sales.push({
+                productId: randomProduct._id,
+                quantity: Math.floor(Math.random() * 3) + 1,
+                saleDate: dateStr
+            });
+            }
         }
       }
       await Sale.insertMany(sales);
@@ -94,4 +138,4 @@ const seedData = async () => {
 
 seedData();
 
-module.exports = { Product, Sale };
+module.exports = { Product, Sale, User };

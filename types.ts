@@ -15,4 +15,12 @@ export interface Sale {
   saleDate: string; // ISO 8601 format: "YYYY-MM-DD"
 }
 
-export type Page = 'Dashboard' | 'Products' | 'Sales' | 'Reports';
+export interface User {
+  id: number | string;
+  username: string;
+  password?: string; // Optional for display, required for creation
+  fullName: string;
+  role: 'admin' | 'staff';
+}
+
+export type Page = 'Dashboard' | 'Products' | 'Sales' | 'Reports' | 'Users';

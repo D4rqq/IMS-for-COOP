@@ -1,14 +1,15 @@
 import React from 'react';
-import type { Page } from '../types';
+import type { Page, User } from '../types';
 import { MenuOpenIcon, UserCircleIcon, LogoutIcon } from './icons/Icons';
 
 interface HeaderProps {
     currentPage: Page;
     setSidebarOpen: (isOpen: boolean) => void;
     onLogout: () => void;
+    user: User;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentPage, setSidebarOpen, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentPage, setSidebarOpen, onLogout, user }) => {
     return (
         <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -24,8 +25,8 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setSidebarOpen, onLogout }
                     </div>
                     <div className="flex items-center">
                         <div className="text-right mr-4 hidden sm:block">
-                            <p className="font-semibold text-slate-700">Admin User</p>
-                            <p className="text-xs text-slate-500">Coop Manager</p>
+                            <p className="font-semibold text-slate-700">{user.fullName}</p>
+                            <p className="text-xs text-slate-500 uppercase">{user.role}</p>
                         </div>
                         <UserCircleIcon className="h-10 w-10 text-psu-maroon" />
                          <button

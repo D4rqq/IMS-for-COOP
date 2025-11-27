@@ -1,12 +1,13 @@
 import React from 'react';
 import type { Page } from '../types';
-import { DashboardIcon, ProductsIcon, SalesIcon, ReportsIcon, MenuCloseIcon } from './icons/Icons';
+import { DashboardIcon, ProductsIcon, SalesIcon, ReportsIcon, MenuCloseIcon, UsersIcon } from './icons/Icons';
 
 interface SidebarProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
   isSidebarOpen: boolean;
   setSidebarOpen: (isOpen: boolean) => void;
+  userRole: 'admin' | 'staff';
 }
 
 const NavLink: React.FC<{
@@ -32,7 +33,7 @@ const NavLink: React.FC<{
   </a>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, userRole }) => {
     
   const handleNavigation = (page: Page) => {
     setCurrentPage(page);
@@ -67,6 +68,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
           <NavLink icon={<ProductsIcon />} label="Products" isActive={currentPage === 'Products'} onClick={() => handleNavigation('Products')} />
           <NavLink icon={<SalesIcon />} label="Sales" isActive={currentPage === 'Sales'} onClick={() => handleNavigation('Sales')} />
           <NavLink icon={<ReportsIcon />} label="Reports" isActive={currentPage === 'Reports'} onClick={() => handleNavigation('Reports')} />
+          {userRole === 'admin' && (
+             <NavLink icon={<UsersIcon />} label="Users" isActive={currentPage === 'Users'} onClick={() => handleNavigation('Users')} />
+          )}
         </nav>
         
         <div className="px-4 py-2 border-t border-gray-700">

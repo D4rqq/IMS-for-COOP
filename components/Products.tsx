@@ -10,6 +10,7 @@ import { PlusIcon, DollarSignIcon, EditIcon, DeleteIcon, AddStockIcon, KebabMenu
 
 interface ProductsProps {
   products: Product[];
+  userRole: 'admin' | 'staff';
   onAddProduct: (newProduct: Omit<Product, 'id'>) => void;
   onEditProduct: (product: Product) => void;
   onDeleteProduct: (productId: number | string) => void;
@@ -36,7 +37,7 @@ const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
   );
 };
 
-const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProduct, onDeleteProduct, onAddStock, onSale }) => {
+const Products: React.FC<ProductsProps> = ({ products, userRole, onAddProduct, onEditProduct, onDeleteProduct, onAddStock, onSale }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modal states
@@ -130,6 +131,8 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
     setDeleteModalOpen(false);
   };
 
+  const isAdmin = userRole === 'admin';
+
   return (
     <>
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -143,13 +146,15 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                    />
-                   <button 
-                      className="bg-psu-maroon text-white px-4 py-2 rounded-lg hover:bg-psu-maroon/90 font-semibold transition-colors flex items-center justify-center shadow-sm hover:shadow-md"
-                      onClick={() => setAddModalOpen(true)}
-                   >
-                    <PlusIcon className="mr-2" />
-                    Add Product
-                   </button>
+                   {isAdmin && (
+                    <button 
+                        className="bg-psu-maroon text-white px-4 py-2 rounded-lg hover:bg-psu-maroon/90 font-semibold transition-colors flex items-center justify-center shadow-sm hover:shadow-md"
+                        onClick={() => setAddModalOpen(true)}
+                    >
+                        <PlusIcon className="mr-2" />
+                        Add Product
+                    </button>
+                   )}
               </div>
           </div>
           <div className="overflow-x-auto">
@@ -189,6 +194,7 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
                                     >
                                         <DollarSignIcon />
                                     </button>
+                                    
                                     <div className="relative" ref={openActionMenuId === product.id ? menuRef : null}>
                                         <button 
                                             onClick={() => setOpenActionMenuId(openActionMenuId === product.id ? null : product.id)}
@@ -203,13 +209,17 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
                                               <a href="#" onClick={(e) => { e.preventDefault(); openAddStockModal(product); }} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                                                 <AddStockIcon className="mr-3" /> Add Stock
                                               </a>
-                                              <a href="#" onClick={(e) => { e.preventDefault(); openEditModal(product); }} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                                                <EditIcon className="mr-3" /> Edit Product
-                                              </a>
-                                              <div className="border-t border-slate-200 my-1"></div>
-                                              <a href="#" onClick={(e) => { e.preventDefault(); openDeleteModal(product); }} className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                                <DeleteIcon className="mr-3"/> Delete
-                                              </a>
+                                              {isAdmin && (
+                                                <>
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); openEditModal(product); }} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
+                                                        <EditIcon className="mr-3" /> Edit Product
+                                                    </a>
+                                                    <div className="border-t border-slate-200 my-1"></div>
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); openDeleteModal(product); }} className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                                        <DeleteIcon className="mr-3"/> Delete
+                                                    </a>
+                                                </>
+                                              )}
                                             </div>
                                           </div>
                                         )}
@@ -222,8 +232,8 @@ const Products: React.FC<ProductsProps> = ({ products, onAddProduct, onEditProdu
                             <td colSpan={6}>
                                 <EmptyState 
                                     title="No Products Found"
-                                    message="Get started by adding your first product to the inventory."
-                                    buttonText="Add Product"
+                                    message={isAdmin ? "Get started by adding your first product to the inventory." : "No products match your search."}
+                                    buttonText={isAdmin ? "Add Product" : undefined}
                                     onButtonClick={() => setAddModalOpen(true)}
                                 />
                             </td>

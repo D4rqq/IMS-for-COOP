@@ -14,24 +14,28 @@ export const products: Product[] = [
   { id: 10, name: 'Collar Bias (per meter)', category: 'Materials', price: 25.00, stock: 500, imageUrl: 'https://picsum.photos/seed/bias/200' },
 ];
 
-// Generate sales data for the last 30 days
+// Generate sales data for the last 180 days (6 months)
 const generateSales = (): Sale[] => {
   const sales: Sale[] = [];
   let saleId = 1;
   const today = new Date();
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 180; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
-    const salesPerDay = Math.floor(Math.random() * 10) + 1; // 1 to 10 sales per day
-    for (let j = 0; j < salesPerDay; j++) {
-      const product = products[Math.floor(Math.random() * products.length)];
-      const quantity = Math.floor(Math.random() * 3) + 1;
-      sales.push({
-        id: saleId++,
-        productId: product.id,
-        quantity: quantity,
-        saleDate: date.toISOString().split('T')[0],
-      });
+    
+    // Randomly skip days
+    if (Math.random() > 0.1) {
+        const salesPerDay = Math.floor(Math.random() * 10) + 1; // 1 to 10 sales per day
+        for (let j = 0; j < salesPerDay; j++) {
+        const product = products[Math.floor(Math.random() * products.length)];
+        const quantity = Math.floor(Math.random() * 3) + 1;
+        sales.push({
+            id: saleId++,
+            productId: product.id,
+            quantity: quantity,
+            saleDate: date.toISOString().split('T')[0],
+        });
+        }
     }
   }
   return sales;

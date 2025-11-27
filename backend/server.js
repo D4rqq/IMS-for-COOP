@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Product, Sale } = require('./db');
+const { Product, Sale, User } = require('./db');
 
 const app = express();
 const PORT = 3001;
@@ -8,12 +8,168 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+// --- SECURITY & VALIDATION HELPERS ---
+
+// Basic HTML sanitization to prevent stored XSS
+const sanitize = (str) => {
+  if (typeof str !== 'string') return '';
+  return str.replace(/<[^>]*>?/gm, '').trim();
+};
+
+const isValidUsername = (username) => {
+  // Alphanumeric and underscores only, min 3 chars
+  return typeof username === 'string' && /^[a-zA-Z0-9_]{3,}$/.test(username);
+};
+
+const isValidPassword = (password) => {
+  // Min 6 chars
+  return typeof password === 'string' && password.length >= 6;
+};
+
+// --- AUTH API ---
+
+// Login
+app.post('/api/login', async (req, res) => {
+  let { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
+  // Sanitize inputs
+  username = sanitize(username);
+  
+  try {
+    const user = await User.findOne({ username, password });
+    if (user) {
+      res.json({ message: "success", data: user });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- USERS API ---
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.json({ data: users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a user
+app.post('/api/users', async (req, res) => {
+  let { username, password, fullName, role } = req.body;
+
+  // Validation
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ error: "Username must be at least 3 characters and alphanumeric." });
+  }
+  if (!isValidPassword(password)) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
+  }
+  if (!fullName || typeof fullName !== 'string') {
+    return res.status(400).json({ error: "Full Name is required." });
+  }
+  if (!['admin', 'staff'].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified." });
+  }
+
+  // Sanitize
+  username = sanitize(username);
+  fullName = sanitize(fullName);
+
+  try {
+    // Check if username exists
+    const existing = await User.findOne({ username });
+    if (existing) {
+      return res.status(400).json({ error: "Username already exists" });
+    }
+
+    const newUser = new User({ username, password, fullName, role });
+    const savedUser = await newUser.save();
+    res.json({ message: "success", data: savedUser });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update a user
+app.put('/api/users/:id', async (req, res) => {
+  let { username, password, fullName, role } = req.body;
+  const userId = req.params.id;
+
+  // Validation
+  if (username && !isValidUsername(username)) {
+    return res.status(400).json({ error: "Invalid username format." });
+  }
+  if (password && password.trim() !== "" && !isValidPassword(password)) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
+  }
+  if (role && !['admin', 'staff'].includes(role)) {
+    return res.status(400).json({ error: "Invalid role." });
+  }
+
+  // Sanitize
+  if (username) username = sanitize(username);
+  if (fullName) fullName = sanitize(fullName);
+
+  try {
+    // Check if username is taken by another user
+    if (username) {
+        const existing = await User.findOne({ username, _id: { $ne: userId } });
+        if (existing) {
+          return res.status(400).json({ error: "Username already exists" });
+        }
+    }
+
+    const updateData = { role };
+    if (username) updateData.username = username;
+    if (fullName) updateData.fullName = fullName;
+    
+    // Only update password if a new one is provided and not empty
+    if (password && password.trim() !== "") {
+      updateData.password = password; 
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ message: "success", data: updatedUser });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a user
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "deleted" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
 // --- PRODUCTS API ---
 
 // Get all products
 app.get('/api/products', async (req, res) => {
   try {
-    // Sort by _id descending (roughly creation time)
     const products = await Product.find({}).sort({ _id: -1 });
     res.json({ data: products });
   } catch (err) {
@@ -23,8 +179,21 @@ app.get('/api/products', async (req, res) => {
 
 // Add a new product
 app.post('/api/products', async (req, res) => {
+  let { name, category, price, stock, imageUrl } = req.body;
+
+  // Validation
+  if (!name || typeof name !== 'string') return res.status(400).json({ error: "Product name is required" });
+  if (!category || typeof category !== 'string') return res.status(400).json({ error: "Category is required" });
+  if (typeof price !== 'number' || price < 0) return res.status(400).json({ error: "Price must be a positive number" });
+  if (typeof stock !== 'number' || stock < 0) return res.status(400).json({ error: "Stock cannot be negative" });
+
+  // Sanitize
+  name = sanitize(name);
+  category = sanitize(category);
+  // We don't strictly sanitize imageUrl but could validate it is a URL format
+
   try {
-    const newProduct = new Product(req.body);
+    const newProduct = new Product({ name, category, price, stock, imageUrl });
     const savedProduct = await newProduct.save();
     res.json({ message: "success", data: savedProduct });
   } catch (err) {
@@ -34,11 +203,20 @@ app.post('/api/products', async (req, res) => {
 
 // Update a product
 app.put('/api/products/:id', async (req, res) => {
+  let { name, category, price, stock, imageUrl } = req.body;
+
+  // Validation (if fields are present)
+  if (price !== undefined && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: "Invalid price" });
+  if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) return res.status(400).json({ error: "Invalid stock" });
+
+  if (name) name = sanitize(name);
+  if (category) category = sanitize(category);
+
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id, 
-      req.body, 
-      { new: true } // Return the updated document
+      { name, category, price, stock, imageUrl }, 
+      { new: true }
     );
     res.json({ message: "success", data: updatedProduct });
   } catch (err) {
@@ -58,8 +236,13 @@ app.delete('/api/products/:id', async (req, res) => {
 
 // Add Stock (Quick Update)
 app.post('/api/products/:id/stock', async (req, res) => {
+  const { quantity } = req.body;
+  
+  if (typeof quantity !== 'number' || quantity <= 0) {
+    return res.status(400).json({ error: "Quantity must be a positive number" });
+  }
+
   try {
-    const { quantity } = req.body;
     await Product.findByIdAndUpdate(
       req.params.id,
       { $inc: { stock: quantity } }
@@ -82,12 +265,14 @@ app.get('/api/sales', async (req, res) => {
   }
 });
 
-// Record a Sale (Transaction: Add Sale + Decrease Stock)
+// Record a Sale
 app.post('/api/sales', async (req, res) => {
   const { productId, quantity, saleDate } = req.body;
 
-  // Use a Mongoose session for transactions (requires MongoDB replica set usually, 
-  // but standard logic works for single instance if careful)
+  if (typeof quantity !== 'number' || quantity <= 0) {
+    return res.status(400).json({ error: "Quantity must be a positive number" });
+  }
+
   try {
     const product = await Product.findById(productId);
     if (!product) {

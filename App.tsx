@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import type { Page, Product, Sale } from './types';
+import type { Page, Product, Sale, User } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Sales from './components/Sales';
 import Reports from './components/Reports';
+import Users from './components/Users';
 import Header from './components/Header';
 import LoginPage from './components/LoginPage';
 // Use API instead of Storage
 import * as api from './data/api';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
@@ -22,10 +23,10 @@ const App: React.FC = () => {
 
   // Load data from API when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (currentUser) {
       loadData();
     }
-  }, [isAuthenticated]);
+  }, [currentUser]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -44,17 +45,19 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = (username: string, password: string): boolean => {
-    // Hardcoded credentials for demonstration
-    if (username === 'admin' && password === 'password') {
-      setIsAuthenticated(true);
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const user = await api.login(username, password);
+      setCurrentUser(user);
       return true;
+    } catch (error) {
+      console.error("Login failed:", error);
+      return false;
     }
-    return false;
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    setCurrentUser(null);
     setCurrentPage('Dashboard');
   };
 
@@ -141,6 +144,7 @@ const App: React.FC = () => {
         return (
           <Products 
             products={products} 
+            userRole={currentUser?.role || 'staff'}
             onAddProduct={handleAddProduct} 
             onEditProduct={handleEditProduct}
             onDeleteProduct={handleDeleteProduct}
@@ -152,20 +156,33 @@ const App: React.FC = () => {
         return <Sales sales={sales} products={products} />;
       case 'Reports':
         return <Reports products={products} sales={sales} />;
+      case 'Users':
+        return currentUser?.role === 'admin' ? <Users /> : <Dashboard products={products} sales={sales} setCurrentPage={setCurrentPage} />;
       default:
         return <Dashboard products={products} sales={sales} setCurrentPage={setCurrentPage} />;
     }
   };
 
-  if (!isAuthenticated) {
+  if (!currentUser) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans">
-      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <Sidebar 
+        currentPage={currentPage} 
+        setCurrentPage={setCurrentPage} 
+        isSidebarOpen={isSidebarOpen} 
+        setSidebarOpen={setSidebarOpen}
+        userRole={currentUser.role}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header currentPage={currentPage} setSidebarOpen={setSidebarOpen} onLogout={handleLogout} />
+        <Header 
+          currentPage={currentPage} 
+          setSidebarOpen={setSidebarOpen} 
+          onLogout={handleLogout}
+          user={currentUser}
+        />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6 lg:p-8">
           {renderPage()}
         </main>
