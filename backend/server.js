@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Product, Sale, User } = require('./db');
 
 const app = express();
@@ -295,6 +296,16 @@ app.post('/api/sales', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// --- SERVE FRONTEND (Production) ---
+// Serve static files from the 'dist' directory (assumes React build is output there)
+// This path assumes 'server.js' is in 'backend/' and 'dist/' is in the root.
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Handle React routing, return all other requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 
 app.listen(PORT, () => {

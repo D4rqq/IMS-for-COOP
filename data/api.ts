@@ -2,8 +2,11 @@
 import type { Product, Sale, User } from '../types';
 import * as storage from './storage';
 
-// Assumes backend is running on localhost:3001
-const API_URL = 'http://localhost:3001/api';
+// Determine API URL dynamically
+// If the app is running on port 3001 (served by backend), use relative path '/api'
+// If running on dev port (like 5173 or 3000), use full localhost:3001 URL
+const isServedByBackend = typeof window !== 'undefined' && window.location.port === '3001';
+const API_URL = isServedByBackend ? '/api' : 'http://localhost:3001/api';
 
 // Helper to handle response
 const handleResponse = async (response: Response) => {

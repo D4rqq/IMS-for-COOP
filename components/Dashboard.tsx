@@ -175,6 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
             value={`₱${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
             subtext="in selected period"
             color="bg-green-100" 
+            onClick={() => setCurrentPage('Sales')}
         />
         <StatCard 
             icon={<ItemsSoldIcon />} 
@@ -182,6 +183,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
             value={totalItemsSold.toLocaleString()} 
             subtext="in selected period"
             color="bg-blue-100"
+            onClick={() => setCurrentPage('Sales')}
         />
         <StatCard 
             icon={<DollarSignIcon className="w-6 h-6 text-purple-500" />} 
@@ -189,6 +191,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, sales, setCurrentPage }
             value={`₱${averageSaleValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             subtext="per transaction" 
             color="bg-purple-100"
+            onClick={() => setCurrentPage('Sales')}
         />
         <StatCard 
             icon={<ProductsIcon className="w-6 h-6 text-yellow-500" />} 
