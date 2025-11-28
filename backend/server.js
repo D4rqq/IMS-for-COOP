@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { Product, Sale, User } = require('./db');
 
 const app = express();
@@ -299,14 +300,32 @@ app.post('/api/sales', async (req, res) => {
 });
 
 // --- SERVE FRONTEND (Production) ---
-// Serve static files from the 'dist' directory (assumes React build is output there)
-// This path assumes 'server.js' is in 'backend/' and 'dist/' is in the root.
-app.use(express.static(path.join(__dirname, '../dist')));
+// We check for 'dist' (Vite default) or 'build' (CRA default)
+// We check both the parent directory and a 'frontend' sibling directory
+const possibleDistPaths = [
+  path.join(__dirname, '../dist'),             // Root (if files are mixed)
+  path.join(__dirname, '../frontend/dist'),    // Standard Monorepo structure
+  path.join(__dirname, '../frontend/build'),   // CRA structure
+  path.join(__dirname, '../client/dist')       // Alternative naming
+];
 
-// Handle React routing, return all other requests to React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist', 'index.html'));
-});
+let distPath = null;
+for (const p of possibleDistPaths) {
+  if (fs.existsSync(p)) {
+    distPath = p;
+    break;
+  }
+}
+
+if (distPath) {
+  console.log(`Serving static files from: ${distPath}`);
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  console.log('No frontend build found. API is running, but static files are not served.');
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
