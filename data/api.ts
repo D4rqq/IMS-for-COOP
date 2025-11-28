@@ -1,8 +1,7 @@
 
-import type { Product, Sale, User } from '../types';
-import * as storage from './storage';
+import type { Product, Sale, User } from '../types.ts';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://localhost:3001/api';
 
 // --- Helper Functions ---
 
@@ -17,12 +16,27 @@ const getHeaders = (isMultipart = false) => {
     headers['Content-Type'] = 'application/json';
   }
 
+  // Note: The simple Node.js backend might not require tokens, 
+  // but we keep this logic in case you add JWT later.
   const token = getAuthToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   
   return headers;
+};
+
+// Check if backend is reachable (used by Sidebar status)
+export const checkBackendHealth = async (): Promise<boolean> => {
+    try {
+        const response = await fetch(`${API_URL}/products`, { 
+            method: 'HEAD',
+            headers: getHeaders()
+        });
+        return response.ok || response.status === 401;
+    } catch (e) {
+        return false;
+    }
 };
 
 const handleResponse = async (response: Response) => {
@@ -34,19 +48,6 @@ const handleResponse = async (response: Response) => {
   }
 
   if (!response.ok) {
-    // Check for validation errors from Laravel (422)
-    if (response.status === 422 && data && data.errors) {
-        // Flatten errors into a single string
-        const errorMsg = Object.values(data.errors).flat().join('\n');
-        throw new Error(errorMsg);
-    }
-    
-    // Check for auth errors (401)
-    if (response.status === 401) {
-        localStorage.removeItem('auth_token');
-        throw new Error("Unauthorized. Please login again.");
-    }
-
     throw new Error(data?.message || data?.error || 'API request failed');
   }
   return data;
@@ -55,7 +56,6 @@ const handleResponse = async (response: Response) => {
 // --- AUTH & USERS ---
 
 export const login = async (username: string, password: string): Promise<User> => {
-  try {
     const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 
@@ -67,54 +67,37 @@ export const login = async (username: string, password: string): Promise<User> =
     
     const json = await handleResponse(response);
     
-    // Save Token
-    if (json.token) {
-        localStorage.setItem('auth_token', json.token);
-    }
+    // The simple Node backend returns { message: "success", data: user }
+    // It does not currently return a token.
+    const user = json.data;
 
-    // Map Laravel User to Frontend User
-    const user = json.user;
     return {
         id: user.id,
         username: user.username,
-        fullName: user.full_name, // Map snake_case to camelCase
+        fullName: user.fullName, // Mongoose uses camelCase
         role: user.role
     };
-  } catch (error) {
-    console.warn("Backend login failed. Checking local storage mock...");
-    // Fallback for demo purposes if backend is down
-    const users = storage.getStoredUsers();
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) return user;
-    throw error;
-  }
 };
 
 export const fetchUsers = async (): Promise<User[]> => {
-  try {
     const response = await fetch(`${API_URL}/users`, {
         headers: getHeaders()
     });
     const json = await handleResponse(response);
     
-    // Map Laravel resource collection
     return json.data.map((u: any) => ({
         id: u.id,
         username: u.username,
-        fullName: u.full_name,
+        fullName: u.fullName,
         role: u.role
     }));
-  } catch (error) {
-    return storage.getStoredUsers();
-  }
 };
 
 export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
-  try {
     const payload = {
         username: user.username,
         password: user.password,
-        full_name: user.fullName, // Map to snake_case
+        fullName: user.fullName,
         role: user.role
     };
 
@@ -129,19 +112,15 @@ export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
     return {
         id: u.id,
         username: u.username,
-        fullName: u.full_name,
+        fullName: u.fullName,
         role: u.role
     };
-  } catch (error) {
-     throw error;
-  }
 };
 
 export const updateUser = async (user: User): Promise<User> => {
-  try {
     const payload: any = {
         username: user.username,
-        full_name: user.fullName,
+        fullName: user.fullName,
         role: user.role
     };
     if (user.password) {
@@ -159,12 +138,9 @@ export const updateUser = async (user: User): Promise<User> => {
     return {
         id: u.id,
         username: u.username,
-        fullName: u.full_name,
+        fullName: u.fullName,
         role: u.role
     };
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const deleteUser = async (id: number | string): Promise<void> => {
@@ -179,25 +155,19 @@ export const deleteUser = async (id: number | string): Promise<void> => {
 // --- PRODUCTS ---
 
 export const fetchProducts = async (): Promise<Product[]> => {
-  try {
     const response = await fetch(`${API_URL}/products`, {
         headers: getHeaders()
     });
     const json = await handleResponse(response);
     
-    // Map Laravel fields
     return json.data.map((p: any) => ({
         id: p.id,
         name: p.name,
         category: p.category,
         price: Number(p.price),
         stock: p.stock,
-        imageUrl: p.image_url // Map snake_case
+        imageUrl: p.imageUrl // Mongoose uses camelCase
     }));
-  } catch (error) {
-    console.warn("Backend unreachable. Serving local products.");
-    return storage.getStoredProducts();
-  }
 };
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
@@ -206,7 +176,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
         category: product.category,
         price: product.price,
         stock: product.stock,
-        image_url: product.imageUrl // Map to snake_case
+        imageUrl: product.imageUrl
     };
 
     const response = await fetch(`${API_URL}/products`, {
@@ -222,7 +192,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
         category: p.category,
         price: Number(p.price),
         stock: p.stock,
-        imageUrl: p.image_url
+        imageUrl: p.imageUrl
     };
 };
 
@@ -232,7 +202,7 @@ export const updateProduct = async (product: Product): Promise<Product> => {
         category: product.category,
         price: product.price,
         stock: product.stock,
-        image_url: product.imageUrl
+        imageUrl: product.imageUrl
     };
 
     const response = await fetch(`${API_URL}/products/${product.id}`, {
@@ -248,7 +218,7 @@ export const updateProduct = async (product: Product): Promise<Product> => {
         category: p.category,
         price: Number(p.price),
         stock: p.stock,
-        imageUrl: p.image_url
+        imageUrl: p.imageUrl
     };
 };
 
@@ -272,31 +242,24 @@ export const addStock = async (id: number | string, quantity: number): Promise<v
 // --- SALES ---
 
 export const fetchSales = async (): Promise<Sale[]> => {
-  try {
     const response = await fetch(`${API_URL}/sales`, {
         headers: getHeaders()
     });
     const json = await handleResponse(response);
     
-    // Map Laravel response structure
-    // Laravel Resource returns: { id, product: {...}, quantity, sale_date }
-    // Frontend expects: { id, productId, quantity, saleDate }
     return json.data.map((s: any) => ({
         id: s.id,
-        productId: s.product.id, // Extract ID from nested object
+        productId: s.productId, // Mongoose returns the ID string directly
         quantity: s.quantity,
-        saleDate: s.sale_date // Map snake_case
+        saleDate: s.saleDate
     }));
-  } catch (error) {
-    return storage.getStoredSales();
-  }
 };
 
 export const createSale = async (productId: number | string, quantity: number): Promise<Sale> => {
-    // Laravel expects product_id
     const payload = {
-        product_id: productId,
-        quantity: quantity
+        productId: productId,
+        quantity: quantity,
+        saleDate: new Date().toISOString().split('T')[0] // Provide date from frontend
     };
 
     const response = await fetch(`${API_URL}/sales`, {
@@ -304,16 +267,13 @@ export const createSale = async (productId: number | string, quantity: number): 
       headers: getHeaders(),
       body: JSON.stringify(payload),
     });
-    // Laravel returns just a message on create in the Controller provided: response()->json(['message' => 'Sale created']);
-    // So we can't return the full new sale object from the API response alone.
-    // However, to keep the UI snappy, we can return a constructed object.
     
     await handleResponse(response);
 
     return {
-        id: Date.now(), // Temporary ID since API doesn't return it in provided controller code
+        id: Date.now(), // Temporary ID for UI update until refresh
         productId,
         quantity,
-        saleDate: new Date().toISOString().split('T')[0]
+        saleDate: payload.saleDate
     };
 };
