@@ -1,7 +1,7 @@
+
 import React from 'react';
 import type { Page } from '../types';
-import { DashboardIcon, ProductsIcon, SalesIcon, ReportsIcon, MenuCloseIcon, UsersIcon, ServerIcon, WifiIcon, WifiOffIcon } from './icons/Icons';
-import { checkBackendHealth } from '../data/api';
+import { DashboardIcon, ProductsIcon, SalesIcon, ReportsIcon, MenuCloseIcon, UsersIcon } from './icons/Icons';
 
 interface SidebarProps {
   currentPage: Page;
@@ -35,18 +35,7 @@ const NavLink: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, userRole }) => {
-  const [isOnline, setIsOnline] = React.useState(false);
-
-  React.useEffect(() => {
-    const checkStatus = async () => {
-        const healthy = await checkBackendHealth();
-        setIsOnline(healthy);
-    };
-    checkStatus();
-    const interval = setInterval(checkStatus, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
+    
   const handleNavigation = (page: Page) => {
     setCurrentPage(page);
     if(window.innerWidth < 768) { // md breakpoint
@@ -85,15 +74,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
           )}
         </nav>
         
-        <div className="px-4 py-2 border-t border-gray-700 space-y-2">
-            <div className={`flex items-center space-x-2 text-xs font-semibold px-2 py-1 rounded ${isOnline ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                {isOnline ? <WifiIcon className="w-3 h-3" /> : <WifiOffIcon className="w-3 h-3" />}
-                <span>{isOnline ? 'Server Online' : 'Server Offline'}</span>
-            </div>
-            <div>
-                <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} PSU Cooperative</p>
-                <p className="text-xs text-gray-400">All Rights Reserved</p>
-            </div>
+        <div className="px-4 py-2 border-t border-gray-700">
+            <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} PSU Cooperative</p>
+            <p className="text-xs text-gray-400">All Rights Reserved</p>
         </div>
       </aside>
     </>

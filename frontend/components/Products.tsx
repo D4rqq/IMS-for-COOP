@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import type { Product } from '../types';
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
@@ -6,7 +7,7 @@ import SellProductModal from './SellProductModal';
 import AddStockModal from './AddStockModal';
 import DeleteProductModal from './DeleteProductModal';
 import EmptyState from './EmptyState';
-import { PlusIcon, DollarSignIcon, EditIcon, DeleteIcon, AddStockIcon, KebabMenuIcon } from './icons/Icons';
+import { PlusIcon, DollarSignIcon, EditIcon, DeleteIcon, AddStockIcon } from './icons/Icons';
 
 interface ProductsProps {
   products: Product[];
@@ -52,21 +53,6 @@ const Products: React.FC<ProductsProps> = ({ products, userRole, onAddProduct, o
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToAddStock, setProductToAddStock] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [openActionMenuId, setOpenActionMenuId] = useState<number | string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenActionMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   const filteredProducts = useMemo(() => 
     products.filter(product => 
@@ -84,19 +70,16 @@ const Products: React.FC<ProductsProps> = ({ products, userRole, onAddProduct, o
   const openEditModal = (product: Product) => {
     setProductToEdit(product);
     setEditModalOpen(true);
-    setOpenActionMenuId(null);
   };
 
   const openAddStockModal = (product: Product) => {
     setProductToAddStock(product);
     setAddStockModalOpen(true);
-    setOpenActionMenuId(null);
   };
 
   const openDeleteModal = (product: Product) => {
     setProductToDelete(product);
     setDeleteModalOpen(true);
-    setOpenActionMenuId(null);
   };
 
   // --- Action Handlers ---
@@ -185,45 +168,42 @@ const Products: React.FC<ProductsProps> = ({ products, userRole, onAddProduct, o
                                   <StockStatusBadge stock={product.stock} />
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <div className="flex justify-center items-center space-x-1">
+                                <div className="flex justify-center items-center space-x-2">
                                     <button 
                                         onClick={() => openSellModal(product)}
                                         disabled={product.stock === 0}
-                                        className="p-2 rounded-full text-green-600 hover:bg-green-100 disabled:text-slate-300 disabled:bg-transparent transition-colors"
+                                        className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-400 transition-colors shadow-sm"
                                         title="Sell Product"
                                     >
                                         <DollarSignIcon />
                                     </button>
                                     
-                                    <div className="relative" ref={openActionMenuId === product.id ? menuRef : null}>
-                                        <button 
-                                            onClick={() => setOpenActionMenuId(openActionMenuId === product.id ? null : product.id)}
-                                            className="p-2 rounded-full text-slate-500 hover:bg-slate-200 transition-colors"
-                                            title="More Actions"
-                                        >
-                                          <KebabMenuIcon />
-                                        </button>
-                                        {openActionMenuId === product.id && (
-                                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-slate-200 animate-fade-in-scale origin-top-right">
-                                            <div className="py-1">
-                                              <a href="#" onClick={(e) => { e.preventDefault(); openAddStockModal(product); }} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                                                <AddStockIcon className="mr-3" /> Add Stock
-                                              </a>
-                                              {isAdmin && (
-                                                <>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); openEditModal(product); }} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                                                        <EditIcon className="mr-3" /> Edit Product
-                                                    </a>
-                                                    <div className="border-t border-slate-200 my-1"></div>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); openDeleteModal(product); }} className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                                        <DeleteIcon className="mr-3"/> Delete
-                                                    </a>
-                                                </>
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-                                    </div>
+                                    <button 
+                                      onClick={() => openAddStockModal(product)}
+                                      className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors shadow-sm"
+                                      title="Add Stock"
+                                    >
+                                      <AddStockIcon />
+                                    </button>
+
+                                    {isAdmin && (
+                                        <>
+                                            <button 
+                                                onClick={() => openEditModal(product)}
+                                                className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shadow-sm"
+                                                title="Edit Product"
+                                            >
+                                                <EditIcon />
+                                            </button>
+                                            <button 
+                                                onClick={() => openDeleteModal(product)}
+                                                className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors shadow-sm"
+                                                title="Delete Product"
+                                            >
+                                                <DeleteIcon />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                               </td>
                           </tr>

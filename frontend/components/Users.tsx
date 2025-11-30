@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User } from '../types';
 import * as api from '../data/api';
 import EmptyState from './EmptyState';
-import { DeleteIcon, UserIcon, PlusIcon, EditIcon } from './icons/Icons';
+import { DeleteIcon, UserIcon, PlusIcon, EditIcon, EyeIcon, EyeOffIcon } from './icons/Icons';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -11,11 +12,13 @@ const Users: React.FC = () => {
   // Add Modal State
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', password: '', fullName: '', role: 'staff' as const });
+  const [showAddPassword, setShowAddPassword] = useState(false);
   
   // Edit Modal State
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [editPassword, setEditPassword] = useState(''); // Separate state for password change
+  const [showEditPassword, setShowEditPassword] = useState(false);
   
   const [error, setError] = useState('');
 
@@ -62,6 +65,7 @@ const Users: React.FC = () => {
       setUsers([...users, created]);
       setAddModalOpen(false);
       setNewUser({ username: '', password: '', fullName: '', role: 'staff' });
+      setShowAddPassword(false);
     } catch (err: any) {
       setError(err.message || 'Failed to create user');
     }
@@ -71,6 +75,7 @@ const Users: React.FC = () => {
   const openEditModal = (user: User) => {
     setUserToEdit(user);
     setEditPassword(''); // Reset password field
+    setShowEditPassword(false);
     setError('');
     setEditModalOpen(true);
   };
@@ -229,14 +234,23 @@ const Users: React.FC = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700">Password</label>
-                        <input 
-                            type="password" 
-                            required 
-                            className="mt-1 w-full border rounded-md p-2 focus:ring-2 focus:ring-psu-maroon/80 outline-none"
-                            value={newUser.password}
-                            onChange={e => setNewUser({...newUser, password: e.target.value})}
-                            placeholder="Min 6 characters"
-                        />
+                        <div className="relative">
+                            <input 
+                                type={showAddPassword ? "text" : "password"}
+                                required 
+                                className="mt-1 w-full border rounded-md p-2 pr-10 focus:ring-2 focus:ring-psu-maroon/80 outline-none"
+                                value={newUser.password}
+                                onChange={e => setNewUser({...newUser, password: e.target.value})}
+                                placeholder="Min 6 characters"
+                            />
+                            <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 top-1 pr-3 flex items-center text-slate-500 hover:text-psu-maroon"
+                                onClick={() => setShowAddPassword(!showAddPassword)}
+                            >
+                                {showAddPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700">Role</label>
@@ -309,13 +323,22 @@ const Users: React.FC = () => {
                           Password 
                           <span className="text-xs font-normal text-slate-500 ml-1">(Leave blank to keep current)</span>
                         </label>
-                        <input 
-                            type="password" 
-                            className="mt-1 w-full border rounded-md p-2 focus:ring-2 focus:ring-psu-maroon/80 outline-none"
-                            value={editPassword}
-                            onChange={e => setEditPassword(e.target.value)}
-                            placeholder="New password (min 6 chars)"
-                        />
+                        <div className="relative">
+                            <input 
+                                type={showEditPassword ? "text" : "password"} 
+                                className="mt-1 w-full border rounded-md p-2 pr-10 focus:ring-2 focus:ring-psu-maroon/80 outline-none"
+                                value={editPassword}
+                                onChange={e => setEditPassword(e.target.value)}
+                                placeholder="New password (min 6 chars)"
+                            />
+                            <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 top-1 pr-3 flex items-center text-slate-500 hover:text-psu-maroon"
+                                onClick={() => setShowEditPassword(!showEditPassword)}
+                            >
+                                {showEditPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700">Role</label>

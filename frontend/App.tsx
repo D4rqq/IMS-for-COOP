@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Page, Product, Sale, User } from './types';
 import Sidebar from './components/Sidebar';
@@ -8,7 +9,7 @@ import Reports from './components/Reports';
 import Users from './components/Users';
 import Header from './components/Header';
 import LoginPage from './components/LoginPage';
-// Use API instead of Storage
+// Use API (purely local/mock)
 import * as api from './data/api';
 
 const App: React.FC = () => {
@@ -39,7 +40,6 @@ const App: React.FC = () => {
       setSales(salesData);
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      alert("Failed to connect to the backend. Is the server running on port 3001?");
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +51,7 @@ const App: React.FC = () => {
       setCurrentUser(user);
       return true;
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("Login process error:", error);
       return false;
     }
   };
@@ -99,7 +99,6 @@ const App: React.FC = () => {
   const handleAddStock = async (productId: number | string, quantity: number) => {
      try {
        await api.addStock(productId, quantity);
-       // Optimistically update UI or refetch
        setProducts(prevProducts => 
         prevProducts.map(p => 
           p.id === productId ? { ...p, stock: p.stock + quantity } : p
@@ -115,7 +114,6 @@ const App: React.FC = () => {
     try {
       const newSale = await api.createSale(productId, quantity);
       
-      // Update UI state locally to reflect changes immediately
       setProducts(prevProducts => 
         prevProducts.map(p => 
           p.id === productId ? { ...p, stock: p.stock - quantity } : p
@@ -124,7 +122,7 @@ const App: React.FC = () => {
       setSales(prevSales => [newSale, ...prevSales]);
     } catch (error) {
       console.error("Error recording sale:", error);
-      alert("Failed to record sale. Check stock levels.");
+      alert(error instanceof Error ? error.message : "Failed to record sale.");
     }
   };
 

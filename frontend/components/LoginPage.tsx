@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent } from 'react';
 import { UserIcon, LockIcon, EyeIcon, EyeOffIcon, WarningIcon } from './icons/Icons';
 
@@ -17,14 +18,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
     
-    // Basic sanitization to remove potential HTML tags from the username.
-    const sanitizedUsername = username.replace(/<[^>]*>?/gm, '');
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
     
-    const success = await onLogin(sanitizedUsername, password);
+    try {
+        // App.tsx handleLogin returns true for success, false for failure
+        const success = await onLogin(cleanUsername, cleanPassword);
 
-    if (!success) {
-      setError('Invalid username or password. Please try again.');
-      setLoading(false);
+        if (!success) {
+            setError('Invalid username or password.');
+        }
+    } catch (err: any) {
+        // This catch block shouldn't really be hit given App.tsx swallows errors, 
+        // but it's here for safety.
+        console.error("Login component caught error:", err);
+        setError('An unexpected error occurred. Please refresh and try again.');
+    } finally {
+        setLoading(false);
     }
   };
 
